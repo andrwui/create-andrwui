@@ -7,6 +7,16 @@ import prompts from 'prompts'
 const projectName = process.argv[2] || 'my-vite-project'
 
 async function init() {
+
+  const { projectName: inputProjectName } = await prompts({
+    type: 'text',
+    name: 'projectName',
+    message: 'Project name:',
+    initial: 'my-project'
+  })
+
+  const projectName = inputProjectName || 'my-project'
+
   const { useRouter } = await prompts({
     type: 'confirm',
     name: 'useRouter',
@@ -57,11 +67,9 @@ import App from './App'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </React.StrictMode>,
 )`
     : `import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -69,9 +77,7 @@ import App from './App'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
     <App />
-  </React.StrictMode>,
 )`
 
   fs.writeFileSync('src/main.tsx', mainContent)
