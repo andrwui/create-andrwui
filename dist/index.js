@@ -1,80 +1,158 @@
-import { execSync } from "child_process";
+#!/usr/bin/env bun
+import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import prompts from 'prompts'
-import { fileURLToPath } from "url";
-
+import { fileURLToPath } from 'url'
+import inquirer from 'inquirer'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const templatesDir = path.join(__dirname, '..', 'templates')
 
-const init = async () => {
+const baseDeps = [
+  '@react-router/fs-routes',
+  'tailwind-merge',
+]
 
-  let projectName = process.argv[2]
+const devDeps = [
+  'eslint',
+  '@eslint/js',
+  'typescript-eslint',
+  'eslint-plugin-prettier',
+  'eslint-config-prettier',
+  'eslint-plugin-react',
+  'prettier',
+  'prettier-plugin-tailwindcss',
+  '@trivago/prettier-plugin-sort-imports',
+]
 
-  if (!projectName) {
-    const { projectName: inputName } = await prompts({
-      type: 'text',
-      name: 'projectName',
-      message: 'project name:',
-      initial: 'my-project',
-    })
-    projectName = inputName
-  }
+const optional = [
+  { name: 'r3f', value: 'r3f' },
+  { name: 'lenis', value: 'lenis' },
+  { name: 'motion', value: 'framer-motion' },
+  { name: 'lucide', value: 'lucide-react' },
+  { name: 'zustand', value: 'zustand' },
+  { name: 'react-spring', value: '@react-spring/web' },
+  { name: 'supabase', value: 'supabase' },
+  { name: 'prisma', value: 'prisma' },
+]
 
-  const { useRouter } = await prompts({
-    type: 'select',
-    name: 'useRouter',
-    message: 'install react router?',
-    initial: 1,
-    choices: [
-      { title: 'yes', value: true },
-      { title: 'no', value: false }
-    ]
-  })
+const r3fDeps = [
+  'three',
+  '@types/three',
+  '@react-three/fiber',
+  '@react-three/drei',
+  '@react-spring/three',
+  '@react-three/postprocessing',
+]
 
-  console.log('creating vite react-swc-ts project...')
-  execSync(`pnpm --silent create vite@latest ${projectName} --template react-swc-ts`, { stdio: 'ignore' })
-  process.chdir(projectName)
+const supabaseDeps = [
+  '@supabase/supabase-js',
+  '@supabase/auth-helpers-remix',
+]
 
-  console.log('installing dependencies...')
-  execSync('pnpm install', { stdio: 'ignore' })
-  execSync('pnpm add -D tailwindcss postcss autoprefixer eslint eslint-config-prettier eslint-plugin-prettier ', { stdio: 'ignore' })
+const prismaDeps = [
+  'prisma',
+  '@prisma/client',
+]
 
-  if (useRouter) {
-    execSync('pnpm --silent add react-router-dom', { stdio: 'ignore' })
-  }
+const exec = (cmd) =>
+  execSync(cmd, { stdio: 'pipe', shell: true })
 
-  console.log('setting up tailwind...')
-  execSync('pnpx tailwindcss init -p', { stdio: 'ignore' })
+const status = (msg) =>
+  process.stdout.write(`\r\x1b[K${msg}`)
 
-  console.log('cleaning up defaults...')
-  fs.unlinkSync('src/assets/react.svg')
-  fs.rmdirSync('src/assets')
-  fs.unlinkSync('public/vite.svg')
-  fs.unlinkSync('src/App.css')
+const read = (f) =>
+  fs.readFileSync(path.join(templatesDir, f), 'utf8')
 
-  const copyTemplate = (templateName, destination) => {
-    const content = fs.readFileSync(
-      path.join(templatesDir, templateName),
-      'utf-8'
-    )
-    fs.writeFileSync(destination, content)
-  }
+const write = (target, content) =>
+  fs.writeFileSync(target, content)
 
-  console.log('copying template...')
-  copyTemplate('App.tsx', 'src/App.tsx')
-  copyTemplate(useRouter ? 'main-router.tsx' : 'main.tsx', 'src/main.tsx')
-  copyTemplate('eslint.config.js', 'eslint.config.js')
-  copyTemplate('tailwind.config.js', 'tailwind.config.js')
-  copyTemplate('index.css', 'src/index.css')
-
-  console.log('\nsetup completed.')
-  console.log(`\nnow: cd ${projectName}.`)
-  console.log(`pnpm run dev.`)
-
+const projectNamePromptTheme = {
+  prefix: '\uf002',
+  style: {
+    answer: (string) => string,
+    message: (string) => string,
+    error: (string) => string,
+    defaultAnswer: (string) => `\x1b[2m${string}\x1b[0m`,
+  },
 }
 
-init().catch((e) => {
-  console.error(e)
-})
+const packageSelectionPromptTheme = {
+  prefix: '\uf02d',
+  icon: {
+    checked: ' \uf0c8',
+    unchecked: ' \uf096',
+  },
+  helpMode: 'never',
+  style: {
+    answer: (text) => ' ' + text,
+    message: (text) => text,
+    error: (text) => text,
+    defaultAnswer: (text) => text,
+    help: () => '',
+    highlight: (text) => text,
+    key: (text) => text,
+    disabledChoice: (text) => text,
+    description: (text) => text,
+  },
+}
+
+const main = async () => {
+  const { project } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'project',
+      message: 'Project name:',
+      default: 'andrwui-app',
+      theme: projectNamePromptTheme,
+    },
+  ])
+
+  const { optionalPackages } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'optionalPackages',
+      message: 'Pick optional packages:',
+      choices: optional,
+      theme: packageSelectionPromptTheme,
+    },
+  ])
+
+  const dir = path.resolve(process.cwd(), project)
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+
+  status('creating base app...')
+  exec(`bun create react-router@latest ${project} --yes --template remix-run/react-router-templates/cloudflare`)
+  process.chdir(dir)
+
+  status('cleaning scaffold...')
+  fs.rmSync('app/welcome', { recursive: true, force: true })
+  fs.rmSync('public/favicon.ico', { force: true })
+  fs.rmSync('app/routes/home.tsx', { force: true })
+
+  status('injecting templates...')
+  write('app/root.tsx', read('root.tsx'))
+  write('app/routes.ts', read('routes.ts'))
+  write('app/routes/_index.tsx', read('_index.tsx'))
+  write('app/app.css', read('app.css'))
+  write('app/entry.server.tsx', read('entry.server.tsx'))
+  write('eslint.config.js', read('eslint.config.js'))
+
+  let deps = [...baseDeps]
+  if (optionalPackages.includes('r3f')) deps.push(...r3fDeps)
+  if (optionalPackages.includes('supabase')) deps.push(...supabaseDeps)
+  if (optionalPackages.includes('prisma')) deps.push(...prismaDeps)
+  deps.push(...optionalPackages.filter(v => !['r3f', 'supabase', 'prisma'].includes(v)))
+
+  status('installing base deps...')
+  exec(`bun add ${deps.join(' ')}`)
+
+  status('installing dev deps...')
+  exec(`bun add -d ${devDeps.join(' ')}`)
+
+  status('done\n')
+  console.log(`\ncd ${project}\nbun dev\n`)
+}
+
+main()
+
