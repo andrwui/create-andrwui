@@ -29,6 +29,7 @@ const optional = [
   { name: 'r3f', value: 'r3f' },
   { name: 'lenis', value: 'lenis' },
   { name: 'motion', value: 'framer-motion' },
+  { name: 'gsap', value: 'gsap @gsap/react' },
   { name: 'lucide', value: 'lucide-react' },
   { name: 'zustand', value: 'zustand' },
   { name: 'react-spring', value: '@react-spring/web' },
